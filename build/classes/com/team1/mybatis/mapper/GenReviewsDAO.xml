@@ -72,9 +72,37 @@
 	
 	<!-- 돌봄 확정 아이디로 특정 리뷰 확인 -->
 	<select id="findByRequestId" resultType="com.test.mybatis.GradeDTO">
-		SELECT GEN_REVIEW_ID, GEN_CONFIRMED_ID, RATING, REVIEWED_DATE
-		, POINT, POINT_SUBJECT, USED_TIME, PAR_READ_DATE
-		FROM GEN_REVIEWS
-		WHERE GEN_REVIEW_ID = #{gen_review_id}
+	 SELECT 
+	        SR.NAME AS SITTER_NAME, 
+	        R.RATING, 
+	        TO_CHAR(R.REVIEWED_DATE, 'YYYY-MM-DD') AS REVIEWED_DATE, 
+	        LISTAGG(MT.TYPE, ', ') WITHIN GROUP (ORDER BY MT.TYPE) AS REVIEW_TYPES 
+	    FROM 
+	        GEN_REVIEWS R
+	    JOIN 
+	        GEN_CONFIRMED GC ON R.GEN_CONFIRMED_ID = GC.GEN_CONFIRMED_ID    
+	    JOIN 
+	        GEN_REQ GR ON GC.GEN_REQ_ID = GR.GEN_REQ_ID                      
+	    JOIN 
+	        GEN_REG G ON GR.GEN_REG_ID = G.GEN_REG_ID                         
+	    JOIN 
+	        SIT_BACKUP SB ON G.SIT_BACKUP_ID = SB.SIT_BACKUP_ID               
+	    JOIN 
+	        SIT_REG SR ON SB.SIT_BACKUP_ID = SR.SIT_BACKUP_ID                 
+	    JOIN 
+	        CHILD_BACKUP CB ON GR.CHILD_BACKUP_ID = CB.CHILD_BACKUP_ID         
+	    JOIN 
+	        PAR_BACKUP PB ON CB.PAR_BACKUP_ID = PB.PAR_BACKUP_ID               
+	    LEFT JOIN 
+	        GEN_MULTIPLE_REVIEWS GMR ON R.GEN_REVIEW_ID = GMR.GEN_REVIEW_ID    
+	    LEFT JOIN 
+	        GEN_MULTIPLE_TYPES MT ON GMR.GEN_MULTIPLE_TYPE_ID = MT.GEN_MULTIPLE_TYPE_ID  
+	    WHERE 
+	        PB.PAR_BACKUP_ID = #{par_backup_id}    
+	        AND G.END_DATE &lt; SYSDATE         
+	    GROUP BY 
+	        SR.NAME, R.RATING, R.REVIEWED_DATE
+	    ORDER BY 
+	        R.REVIEWED_DATE DESC
 	</select>
 </mapper>

@@ -6,6 +6,8 @@ package com.team1.mybatis;
 
 import java.util.ArrayList;
 
+import com.team1.dto.ChildDTO;
+
 public interface IChildDAO
 {
 	// 아이 정보 등록
@@ -43,4 +45,7 @@ public interface IChildDAO
 	
 	// 아이 장애 삭제
 	public int removeDisability(ChildDTO disability);
+	
+	// 부모 마이페이지 리스트 (메인)
+	public ArrayList<ChildDTO> childNameList();
 }
