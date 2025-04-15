@@ -5,31 +5,101 @@
 
 <mapper namespace="com.test.mybatis.IChildDAO">
 	
-	<!-- 아이 정보 등록 -->
-	<insert id="add">
-		INSERT INTO CHILD_REG (CHILD_REG_ID, CHILD_BACKUP_ID, NAME, HEIGHT, WEIGHT
-		, SSN_FIRST, SSN_SECOND
-		, SPECIAL_NOTES, BLOOD_TYPE)
-		VALUES (#{child_reg_id}, #{child_backup_id}, #{name}, #{height}, {weight}
-		, #{ssn_first}, #{ssn_second}, #{special_notes}, #{blood_type})
-	</insert>
+    <!-- 아이 전체 등록 (기본정보 + 장애 + 지병 + 알레르기) -->
+    <insert id="add" parameterType="com.team1.mybatis.ChildDTO">
+        BEGIN
+            <!-- 1. 아이 기본 정보 -->
+            INSERT INTO CHILD_REG 
+            (
+                CHILD_REG_ID, CHILD_BACKUP_ID, NAME, HEIGHT, WEIGHT,
+                SSN_FIRST, SSN_SECOND, SPECIAL_NOTES, BLOOD_TYPE
+            ) VALUES 
+            (
+                #{child_reg_id}, #{child_backup_id}, #{name}, #{height}, #{weight},
+                #{ssn_first}, #{ssn_second}, #{special_notes}, #{blood_type}
+            )
+
+            <!-- 2. 장애 -->
+            INSERT INTO CHILD_DISABILITY 
+            (
+                CHILD_DISABILITY_ID, DISABILITY_TYPE_ID, REG_DATE, CHILD_REG_ID
+            ) VALUES 
+            (
+                #{child_disability_id}, #{disability_type_id}, SYSDATE, #{child_reg_id}
+            )
+
+            <!-- 3. 지병 -->
+            INSERT INTO CHILD_MEDICAL 
+            (
+                CHILD_MEDICAL_ID, MEDICAL_TYPE_ID, REG_DATE, CHILD_REG_ID
+            ) VALUES 
+            (
+                #{child_medical_id}, #{medical_type_id}, SYSDATE, #{child_reg_id}
+            )
+
+            <!-- 4. 알레르기 -->
+            INSERT INTO CHILD_ALLERGY 
+            (
+                CHILD_ALLERGY_ID, ALLERGY_TYPE_ID, REG_DATE, CHILD_REG_ID
+            ) VALUES 
+            (
+                #{child_allergy_id}, #{allergy_type_id}, SYSDATE, #{child_reg_id}
+            )
+        END
+    </insert>
 	
 	<!-- 아이 정보 수정 -->
-	<update id="modify">
-		UPDATE CHILD_REG
-		SET NAME = #{name}
-		, HEIGHT = #{height}
-		, WEIGHT = #{weight}
-		, SPECIAL_NOTES = #{special_notes}
-		WHERE CHILD_REG_ID = #{child_reg_id}
+	<update id="modify" parameterType="com.team1.mybatis.ChildDTO">
+	    BEGIN
+        <!-- 아이 기본 정보 수정 -->
+        UPDATE CHILD_REG
+        SET 
+            NAME = #{name},
+            HEIGHT = #{height},
+            WEIGHT = #{weight},
+            SPECIAL_NOTES = #{special_notes}
+        WHERE CHILD_BACKUP_ID = #{child_backup_id};
+
+        <!-- 장애 정보 수정 -->
+        UPDATE CHILD_DISABILITY
+        SET 
+            DISABILITY_TYPE_ID = #{disability_type_id},
+            REG_DATE = SYSDATE
+        WHERE CHILD_REG_ID = #{child_reg_id};
+
+        <!-- 지병 정보 수정 -->
+        UPDATE CHILD_MEDICAL
+        SET 
+            MEDICAL_TYPE_ID = #{medical_type_id},
+            REG_DATE = SYSDATE
+        WHERE CHILD_REG_ID = #{child_reg_id};
+
+        <!-- 알레르기 정보 수정 -->
+        UPDATE CHILD_ALLERGY
+        SET 
+            ALLERGY_TYPE_ID = #{allergy_type_id},
+            REG_DATE = SYSDATE
+        WHERE CHILD_REG_ID = #{child_reg_id};
+    END
 	</update>
-	
+
 	<!-- 아이 정보 삭제 -->
-	<delete id="remove">
-		DELETE FROM CHILD_REG
-		WHERE CHILD_REG_ID = #{child_reg_id}
-	</delete>
+	<delete id="remove" parameterType="String">
+	    BEGIN
+	        DELETE FROM CHILD_DISABILITY
+	        WHERE CHILD_REG_ID = #{child_reg_id}
 	
+	        DELETE FROM CHILD_MEDICAL
+	        WHERE CHILD_REG_ID = #{child_reg_id}
+	
+	        DELETE FROM CHILD_ALLERGY
+	        WHERE CHILD_REG_ID = #{child_reg_id}
+	
+	        DELETE FROM CHILD_REG
+	        WHERE CHILD_REG_ID = #{child_reg_id}
+	    END
+	</delete>
+
 	<!-- 아이 리스트 -->
 	<select id="list" resultType="com.team1.mybatis.ChildDTO">
 		SELECT *
@@ -37,11 +107,32 @@
 	</select>
 	
 	<!-- 특정 아이 리스트 -->
-		<select id="childList" resultType="com.team1.mybatis.ChildDTO">
-		SELECT *
-		FROM V_CHILD_INFO
-		WHERE CHILD_REG_ID = #{child_reg_id}
-	</select>
+	<select id="childList" resultType="com.team1.mybatis.ChildDTO">
+        SELECT 
+            CR.NAME,                       
+            TRUNC(MONTHS_BETWEEN(SYSDATE, TO_DATE(SUBSTR(CR.SSN_FIRST, 1, 6), 'YYMMDD')) / 12) AS AGE 
+            CR.HEIGHT,                      
+            CR.WEIGHT,                     
+            CR.BLOOD_TYPE,                  
+            CR.SPECIAL_NOTES,              
+            <!-- 장애 정보 조회 -->
+            (SELECT DISABILITY_TYPE_ID 
+             FROM CHILD_DISABILITIES 
+             WHERE CHILD_REG_ID = CR.CHILD_REG_ID AND ROWNUM = 1) AS DISABILITY_TYPE, 
+            
+            <!-- 지병 정보 조회 -->
+            (SELECT MEDICAL_TYPE_ID 
+             FROM CHILD_MEDICALS 
+             WHERE CHILD_REG_ID = CR.CHILD_REG_ID AND ROWNUM = 1) AS MEDICAL_TYPE,
+            
+            <!-- 알레르기 정보 조회 -->
+            (SELECT ALLERGIE_TYPE_ID 
+             FROM CHILD_ALLERGIES 
+             WHERE CHILD_REG_ID = CR.CHILD_REG_ID AND ROWNUM = 1) AS ALLERGIE_TYPE, 
+            
+        FROM CHILD_REG CR
+        WHERE CR.CHILD_BACKUP_ID = #{child_backup_id}
+    </select>
 	
 	<!-- 아이 전체 인원 수 -->
 	<select id="countChild" resultType="java.lang.Integer">
@@ -84,6 +175,14 @@
 		DELETE FROM CHILD_DISABILITIES
 		WHERE CHILD_DISABILITY_ID = #{child_disability_id}
 	</delete>
-	
-	
+
+	<!-- 아이 이름 리스트 (마이 페이지에 보이는 부분 쿼리) -->
+	<select id="childNameList" resultType="com.team1.mybatis.ChildDTO">		
+		SELECT 
+		CR.NAME 
+		FROM PAR_BACKUP PB
+		JOIN CHILD_BACKUP CB ON PB.PAR_BACKUP_ID = CB.PAR_BACKUP_ID
+		JOIN CHILD_REG CR ON CB.CHILD_BACKUP_ID = CR.CHILD_BACKUP_ID
+		WHERE PB.PAR_BACKUP_ID = #{par_backup_id}
+	</select>
 </mapper>

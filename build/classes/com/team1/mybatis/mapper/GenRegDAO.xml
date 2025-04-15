@@ -28,7 +28,7 @@
 	</select>
 	
 	<!-- 전체 근무 등록 수 확인 -->
-	<select id="countGen">
+	<select id="countGen" resultType="java.lang.Integer"> 
 		SELECT COUNT(*) AS COUNT
 		FROM GEN_REG
 	</select>

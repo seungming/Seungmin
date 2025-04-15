@@ -10,6 +10,8 @@ public class ParDTO
 	private String par_reg_id, par_backup_id, name, pw, tel, ssn_first,ssn_second, road_addr, detailed_addr;
 	private String id, reg_date;
 	private int zip_code;
+	
+	// getter / setter 구성
 	public String getPar_reg_id()
 	{
 		return par_reg_id;
